@@ -1,3 +1,5 @@
-hyperon
-python-dotenv
-google-genai
+google-genai>=0.1.0
+hyperon>=0.1.0
+fastapi>=0.104.1
+uvicorn>=0.24.0
+python-dotenv>=1.0.0
