@@ -1,5 +1,8 @@
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union, BinaryIO
 import os
+import base64
+from pathlib import Path
+import mimetypes
 from google import genai
 from dotenv import load_dotenv
 
@@ -16,7 +19,8 @@ class GeminiLLM:
     async def generate_response(self, 
                               question: str, 
                               context: List[Dict[str, Any]], 
-                              history: Optional[List[Dict[str, str]]] = None) -> str:
+                              history: Optional[List[Dict[str, str]]] = None,
+                              media_files: Optional[List[Dict[str, Any]]] = None) -> str:
         """
         Generate a response using Gemini with context from the knowledge graph.
         
@@ -24,6 +28,7 @@ class GeminiLLM:
             question: User's question
             context: Relevant context from knowledge graph
             history: Chat history for context
+            media_files: List of media files (images, videos, etc.)
             
         Returns:
             str: Generated response
@@ -53,17 +58,63 @@ INSTRUCTIONS:
 6. When confidence scores or weights are provided, prioritize information accordingly
 7. If you're not completely certain about something, acknowledge the uncertainty
 8. If the context doesn't contain enough information to answer fully, say so
+9. If media files are provided, analyze and describe them in your response
 
 QUESTION: {question}
 
 ANSWER: """
         
+        # Prepare contents for the API call
+        contents = []
+        
+        # Add text prompt
+        contents.append(prompt)
+        
+        # Add media files if provided
+        if media_files:
+            for media_file in media_files:
+                if media_file['type'] == 'image':
+                    # Add image to contents
+                    contents.append(self._create_image_part(media_file['data'], media_file['mime_type']))
+                elif media_file['type'] == 'video':
+                    # For videos, we can extract frames or use the thumbnail
+                    # This is a simplified approach - in production, you'd want to extract key frames
+                    if 'thumbnail' in media_file:
+                        contents.append(self._create_image_part(media_file['thumbnail'], 'image/jpeg'))
+        
         # Generate response using the client
         response = client.models.generate_content(
             model=self.model_name,
-            contents=prompt
+            contents=contents
         )
         return response.text
+    
+    def _create_image_part(self, image_data: Union[str, bytes, BinaryIO], mime_type: str = None) -> Dict:
+        """Create an image part for the Gemini API."""
+        if isinstance(image_data, str):
+            # If it's a file path
+            if Path(image_data).exists():
+                with open(image_data, "rb") as f:
+                    image_bytes = f.read()
+                if not mime_type:
+                    mime_type = mimetypes.guess_type(image_data)[0]
+            # If it's a base64 string
+            else:
+                image_bytes = base64.b64decode(image_data)
+                mime_type = mime_type or "image/jpeg"  # Default to JPEG if not specified
+        elif isinstance(image_data, bytes):
+            image_bytes = image_data
+            mime_type = mime_type or "image/jpeg"  # Default to JPEG if not specified
+        else:
+            # Assume it's a file-like object
+            image_bytes = image_data.read()
+            mime_type = mime_type or "image/jpeg"  # Default to JPEG if not specified
+            
+        # Create image part using the Gemini API
+        return genai.types.Part.from_data(
+            data=image_bytes,
+            mime_type=mime_type
+        )
     
     def _format_context(self, context: List[Dict[str, Any]]) -> str:
         """Format knowledge graph context into a structured string."""
