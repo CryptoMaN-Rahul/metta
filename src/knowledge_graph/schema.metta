@@ -35,12 +35,10 @@
    (match &self (Relationship $entity $type $to $context)
           (RelatedInfo $to $type $context)))
 
-;; Helper function to get FAQs by category and concepts
-(= (GetFAQsByContext $category $concept)
+;; Helper function to get FAQs by category
+(= (GetFAQsByCategory $category)
    (match &self (FAQ $question $answer $category $concepts)
-          (if (contains $concepts $concept)
-              (FAQEntry $question $answer)
-              False)))
+          (FAQEntry $question $answer)))
 
 ;; Helper function to find similar terms using synonyms
 (= (FindSimilarTerms $term)
@@ -57,11 +55,7 @@
    (match &self (Context $entity $context $weight)
           (ContextInfo $context $weight)))
 
-;; Helper function to search across all FAQs with semantic matching
+;; Helper function to search across all FAQs
 (= (SearchFAQs $query)
    (match &self (FAQ $question $answer $category $concepts)
-          (if (or (contains $question $query)
-                  (contains $answer $query)
-                  (contains $concepts $query))
-              (FAQMatch $question $answer $category)
-              False))) 
+          (FAQMatch $question $answer $category))) 

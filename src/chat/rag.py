@@ -36,7 +36,6 @@ class GraphRAG:
         synonym_matches = self._query_synonyms(question)
         for synonym in synonym_matches:
             # Query entities and FAQs using synonyms
-            context.extend(self._query_faqs(synonym['term']))
             context.extend(self._query_entities(synonym['term']))
         
         # 4. Get category hierarchies for relevant concepts
@@ -53,39 +52,59 @@ class GraphRAG:
         return context
     
     def _query_faqs(self, query: str) -> List[Dict[str, Any]]:
-        """Query FAQs using semantic search."""
+        """Query FAQs using direct matching."""
         results = []
         
-        # Direct FAQ search
+        # Get all FAQs
         faq_matches = self.metta.run(f'''
-            ! (SearchFAQs "{query}")
+            ! (match &self (FAQ $question $answer $category $concepts)
+                (FAQEntry $question $answer $category))
         ''')[0]
         
+        # Filter FAQs based on relevance to query
         for match in faq_matches:
-            results.append({
-                'faq': {
-                    'question': str(match.get_children()[0]),
-                    'answer': str(match.get_children()[1]),
-                    'category': str(match.get_children()[2]),
-                    'match_type': 'direct'
-                }
-            })
+            question = str(match.get_children()[0])
+            answer = str(match.get_children()[1])
+            category = str(match.get_children()[2])
+            
+            # Simple relevance check - if query terms appear in question or answer
+            if self._is_relevant(query, question) or self._is_relevant(query, answer):
+                results.append({
+                    'faq': {
+                        'question': question,
+                        'answer': answer,
+                        'category': category,
+                        'match_type': 'direct'
+                    }
+                })
         
-        # Context-based FAQ search
-        context_matches = self.metta.run(f'''
-            ! (GetFAQsByContext "General" "{query}")
-        ''')[0]
-        
-        for match in context_matches:
-            results.append({
-                'faq': {
-                    'question': str(match.get_children()[0]),
-                    'answer': str(match.get_children()[1]),
-                    'match_type': 'context'
-                }
-            })
+        # Get FAQs by category if any terms match category names
+        terms = self._extract_terms(query)
+        for term in terms:
+            category_matches = self.metta.run(f'''
+                ! (GetFAQsByCategory "{term}")
+            ''')[0]
+            
+            for match in category_matches:
+                results.append({
+                    'faq': {
+                        'question': str(match.get_children()[0]),
+                        'answer': str(match.get_children()[1]),
+                        'match_type': 'category'
+                    }
+                })
         
         return results
+    
+    def _is_relevant(self, query: str, text: str) -> bool:
+        """Check if query is relevant to text using simple term matching."""
+        query_terms = self._extract_terms(query.lower())
+        text_lower = text.lower()
+        
+        for term in query_terms:
+            if term in text_lower:
+                return True
+        return False
     
     def _query_entities(self, query: str) -> List[Dict[str, Any]]:
         """Query entities and their relationships."""
