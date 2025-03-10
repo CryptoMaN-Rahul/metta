@@ -1,35 +1,67 @@
 ;; Define the basic entity types
 (= (Entity $name $type) (HasType $name $type))
 
-;; Define relationships between entities
-(= (Relationship $from $type $to) (HasRelation $from $type $to))
+;; Define relationships between entities with context
+(= (Relationship $from $type $to $context) 
+   (HasRelation $from $type $to $context))
 
-;; Define properties for entities
-(= (Property $entity $key $value) (HasProperty $entity $key $value))
+;; Define properties for entities with metadata
+(= (Property $entity $key $value $metadata) 
+   (HasProperty $entity $key $value $metadata))
 
-;; Define FAQ entries
-(= (FAQ $question $answer $category) (HasFAQ $question $answer $category))
+;; Define FAQ entries with metadata and related concepts
+(= (FAQ $question $answer $category $concepts)
+   (HasFAQ $question $answer $category $concepts))
 
-;; Define category hierarchies
-(= (Category $name $parent) (HasParent $name $parent))
+;; Define category hierarchies with descriptions
+(= (Category $name $parent $description)
+   (HasParent $name $parent $description))
 
-;; Define synonyms for better matching
-(= (Synonym $term $equivalent) (HasSynonym $term $equivalent))
+;; Define synonyms and semantic equivalents
+(= (Synonym $term $equivalent $confidence)
+   (HasSynonym $term $equivalent $confidence))
 
-;; Define context relationships
-(= (Context $entity $context) (HasContext $entity $context))
+;; Define context relationships with weights
+(= (Context $entity $context $weight)
+   (HasContext $entity $context $weight))
 
-;; Helper function to get all properties of an entity
-(= (GetProperties $entity)
-   (match &self (Property $entity $key $value)
-          (Property $key $value)))
+;; Helper function to get all properties of an entity with metadata
+(= (GetPropertiesWithMetadata $entity)
+   (match &self (Property $entity $key $value $metadata)
+          (PropertyInfo $key $value $metadata)))
 
-;; Helper function to get related entities
-(= (GetRelated $entity)
-   (match &self (Relationship $entity $type $to)
-          (Related $to $type)))
+;; Helper function to get related entities with context
+(= (GetRelatedWithContext $entity)
+   (match &self (Relationship $entity $type $to $context)
+          (RelatedInfo $to $type $context)))
 
-;; Helper function to get FAQs by category
-(= (GetFAQsByCategory $category)
-   (match &self (FAQ $question $answer $category)
-          (FAQEntry $question $answer))) 
+;; Helper function to get FAQs by category and concepts
+(= (GetFAQsByContext $category $concept)
+   (match &self (FAQ $question $answer $category $concepts)
+          (if (contains $concepts $concept)
+              (FAQEntry $question $answer)
+              False)))
+
+;; Helper function to find similar terms using synonyms
+(= (FindSimilarTerms $term)
+   (match &self (Synonym $term $equivalent $confidence)
+          (SimilarTerm $equivalent $confidence)))
+
+;; Helper function to get category hierarchy
+(= (GetCategoryHierarchy $category)
+   (match &self (Category $category $parent $description)
+          (CategoryInfo $parent $description)))
+
+;; Helper function to get weighted context
+(= (GetWeightedContext $entity)
+   (match &self (Context $entity $context $weight)
+          (ContextInfo $context $weight)))
+
+;; Helper function to search across all FAQs with semantic matching
+(= (SearchFAQs $query)
+   (match &self (FAQ $question $answer $category $concepts)
+          (if (or (contains $question $query)
+                  (contains $answer $query)
+                  (contains $concepts $query))
+              (FAQMatch $question $answer $category)
+              False))) 
