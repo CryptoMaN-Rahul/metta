@@ -1,0 +1,3 @@
+hyperon
+python-dotenv
+google-genai

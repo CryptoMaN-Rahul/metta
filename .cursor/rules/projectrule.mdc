@@ -1,0 +1,17 @@
+---
+description: im working on the project ( refer project.md) , i just have 3 hours to complete it  , always refer @doc.md @metta_python.md @mettaQuickstart.md while starting something as it is the only bible and the documentation for you , don't hallucinate by spitting out wrong code , always refer project.md and @doc.md @metta_python.md @mettaQuickstart.md
+globs: 
+alwaysApply: false
+---
+
+# Your rule content
+im working on the project ( refer project.md) , i just have 3 hours to complete it  , always refer 'doc.md' while starting something as it is the only bible and the documentation for you , don't hallucinate by spitting out wrong code , always refer doc.md
+
+[project.md](mdc:project.md)
+[doc.md](mdc:doc.md)
+[metta_python.md](mdc:metta_python.md)
+[mettaQuickstart.md](mdc:mettaQuickstart.md)
+
+
+YOU HAVE TO GIVE ME ROBUST ,MODULAR CODE THAT IS SCALABELE AND IS CApABLE OF WINNING THIS HACKATHON
+
