@@ -2,8 +2,9 @@ import os
 import json
 from typing import List, Dict, Optional, Any
 from fastapi import FastAPI, HTTPException, UploadFile, File, Form, BackgroundTasks
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
@@ -46,6 +47,15 @@ async def startup_event():
         )
     except Exception as e:
         print(f"Error loading knowledge base: {e}")
+
+# Serve demo.html at the root
+@app.get("/")
+async def get_demo():
+    return FileResponse("demo.html")
+
+@app.get("/demo.html")
+async def get_demo_html():
+    return FileResponse("demo.html")
 
 # Pydantic models for request/response validation
 class Question(BaseModel):
@@ -357,4 +367,8 @@ async def add_extracted_data_to_graph(data: Dict[str, Any]):
 
 if __name__ == "__main__":
     import uvicorn
+    
+    # Mount static files after all routes are defined
+    app.mount("/static", StaticFiles(directory="static"), name="static")
+    
     uvicorn.run(app, host="0.0.0.0", port=8000) 

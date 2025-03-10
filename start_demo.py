@@ -5,6 +5,7 @@ import subprocess
 import time
 import signal
 import platform
+import requests
 from pathlib import Path
 
 def start_server():
@@ -24,20 +25,31 @@ def start_server():
     
     # Wait for the server to start
     print("Waiting for server to start...")
-    time.sleep(3)  # Give the server a few seconds to start
+    
+    # Wait for the server to be ready
+    max_attempts = 10
+    attempts = 0
+    while attempts < max_attempts:
+        try:
+            response = requests.get("http://localhost:8000/docs")
+            if response.status_code == 200:
+                print("Server is ready!")
+                break
+        except requests.exceptions.ConnectionError:
+            pass
+        
+        attempts += 1
+        time.sleep(2)
+    
+    if attempts == max_attempts:
+        print("Warning: Could not confirm server is running. Proceeding anyway...")
     
     return server_process
 
 def open_demo():
     """Open the demo interface in a web browser"""
-    # Get the absolute path to the demo.html file
-    demo_path = os.path.abspath("demo.html")
-    
-    # Convert to file:// URL
-    if platform.system() == 'Windows':
-        demo_url = f"file:///{demo_path.replace(os.sep, '/')}"
-    else:
-        demo_url = f"file://{demo_path}"
+    # Use the server URL instead of file path
+    demo_url = "http://localhost:8000/demo.html"
     
     print(f"Opening demo interface: {demo_url}")
     webbrowser.open(demo_url)
@@ -49,14 +61,13 @@ def main():
     
     # Check if the server is already running
     try:
-        import requests
-        response = requests.get("http://localhost:9009/docs")
+        response = requests.get("http://localhost:8000/docs")
         if response.status_code == 200:
             print("Server is already running.")
             server_process = None
         else:
             server_process = start_server()
-    except:
+    except requests.exceptions.ConnectionError:
         server_process = start_server()
     
     # Open the demo interface
@@ -74,7 +85,10 @@ def main():
             if platform.system() == 'Windows':
                 server_process.terminate()
             else:
-                os.killpg(os.getpgid(server_process.pid), signal.SIGTERM)
+                try:
+                    os.killpg(os.getpgid(server_process.pid), signal.SIGTERM)
+                except AttributeError:
+                    server_process.terminate()
             print("Server stopped.")
     else:
         print("\nDemo is running with an existing server instance.")

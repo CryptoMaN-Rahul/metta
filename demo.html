@@ -121,6 +121,60 @@
             border: 1px solid var(--border-color);
         }
         
+        .assistant-message h3 {
+            margin-top: 10px;
+            margin-bottom: 5px;
+            color: var(--primary-color);
+            font-size: 1.1rem;
+        }
+        
+        .assistant-message ul {
+            margin: 5px 0;
+            padding-left: 20px;
+        }
+        
+        .assistant-message a {
+            color: var(--primary-color);
+            text-decoration: none;
+            border-bottom: 1px dotted var(--primary-color);
+        }
+        
+        .assistant-message a:hover {
+            border-bottom: 1px solid var(--primary-color);
+        }
+        
+        .assistant-message code {
+            background-color: #f5f5f5;
+            padding: 2px 4px;
+            border-radius: 3px;
+            font-family: monospace;
+            font-size: 0.9em;
+        }
+        
+        .assistant-message .definition {
+            background-color: #f8f9fa;
+            padding: 8px;
+            border-left: 3px solid var(--primary-color);
+            margin: 8px 0;
+        }
+        
+        .assistant-message .example {
+            background-color: #f0f7ff;
+            padding: 8px;
+            border-left: 3px solid var(--accent-color);
+            margin: 8px 0;
+        }
+        
+        .assistant-message p {
+            margin: 8px 0;
+        }
+        
+        .assistant-message img {
+            max-width: 100%;
+            border-radius: 4px;
+            margin: 8px 0;
+        }
+        
         .chat-input {
             display: flex;
             gap: 10px;
@@ -352,6 +406,50 @@
             background-color: #f8d7da;
             color: #721c24;
             display: block;
+        }
+        
+        .assistant-message .interactive-element {
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            margin: 10px 0;
+            overflow: hidden;
+        }
+        
+        .assistant-message .collapsible-header {
+            background-color: var(--light-bg);
+            padding: 10px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .assistant-message .collapsible-content {
+            padding: 10px;
+            display: none;
+        }
+        
+        .assistant-message .collapsible-content.active {
+            display: block;
+        }
+        
+        .assistant-message .toggle-button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+        
+        .assistant-message .interactive-diagram {
+            width: 100%;
+            height: 200px;
+            background-color: var(--light-bg);
+            border-radius: 4px;
+            margin: 10px 0;
+            position: relative;
         }
     </style>
     <!-- Load D3.js for knowledge graph visualization -->
@@ -700,11 +798,102 @@
             const chatMessages = document.getElementById('chatMessages');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${sender}-message`;
-            messageDiv.textContent = text;
+            
+            if (sender === 'assistant') {
+                // Check if the text starts with ```html and ends with ```
+                if (text.startsWith('```html') && text.endsWith('```')) {
+                    // Extract the HTML content from the code block
+                    const htmlContent = text.substring(7, text.length - 3).trim();
+                    messageDiv.innerHTML = htmlContent;
+                } else if (text.startsWith('```') && text.endsWith('```')) {
+                    // Handle other code blocks
+                    const codeContent = text.substring(3, text.length - 3).trim();
+                    messageDiv.innerHTML = `<pre><code>${codeContent}</code></pre>`;
+                } else {
+                    // Use innerHTML for assistant messages to render HTML
+                    messageDiv.innerHTML = text;
+                }
+                
+                // Make links open in new tab
+                const links = messageDiv.querySelectorAll('a');
+                links.forEach(link => {
+                    if (!link.hasAttribute('target')) {
+                        link.setAttribute('target', '_blank');
+                    }
+                });
+                
+                // Setup interactive elements
+                setupInteractiveElements(messageDiv);
+            } else {
+                // Use textContent for user messages
+                messageDiv.textContent = text;
+            }
+            
             chatMessages.appendChild(messageDiv);
             
             // Scroll to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+        
+        function setupInteractiveElements(messageDiv) {
+            // Setup collapsible sections
+            const collapsibleHeaders = messageDiv.querySelectorAll('.collapsible-header');
+            collapsibleHeaders.forEach(header => {
+                header.addEventListener('click', function() {
+                    const content = this.nextElementSibling;
+                    content.classList.toggle('active');
+                    
+                    // Update button text
+                    const button = this.querySelector('.toggle-button');
+                    if (button) {
+                        button.textContent = content.classList.contains('active') ? 'Hide' : 'Show';
+                    }
+                });
+            });
+            
+            // Add collapsible functionality to definition and example divs
+            const definitionDivs = messageDiv.querySelectorAll('.definition');
+            definitionDivs.forEach(div => {
+                // Get the first child (usually the title)
+                const title = div.querySelector('b');
+                if (title) {
+                    // Create a wrapper for the collapsible content
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'interactive-element';
+                    
+                    // Create the header
+                    const header = document.createElement('div');
+                    header.className = 'collapsible-header';
+                    header.innerHTML = title.outerHTML + '<button class="toggle-button">Show</button>';
+                    
+                    // Create the content
+                    const content = document.createElement('div');
+                    content.className = 'collapsible-content';
+                    
+                    // Move the content from the original div to the new content div
+                    while (div.childNodes.length > 0) {
+                        if (div.firstChild !== title) {
+                            content.appendChild(div.firstChild);
+                        } else {
+                            div.removeChild(div.firstChild);
+                        }
+                    }
+                    
+                    // Assemble the new structure
+                    wrapper.appendChild(header);
+                    wrapper.appendChild(content);
+                    div.appendChild(wrapper);
+                    
+                    // Add event listener
+                    header.addEventListener('click', function() {
+                        content.classList.toggle('active');
+                        const button = this.querySelector('.toggle-button');
+                        if (button) {
+                            button.textContent = content.classList.contains('active') ? 'Hide' : 'Show';
+                        }
+                    });
+                }
+            });
         }
         
         function updateExtractedEntities(entities) {

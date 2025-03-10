@@ -5,6 +5,7 @@ from pathlib import Path
 import mimetypes
 from google import genai
 from dotenv import load_dotenv
+import re
 
 load_dotenv()
 
@@ -39,30 +40,38 @@ class GeminiLLM:
         # Format chat history if provided
         history_str = self._format_history(history) if history else ""
         
-        # Construct the prompt with enhanced instructions
-        prompt = f"""You are a domain-specific FAQ chatbot powered by a knowledge graph. Your goal is to provide accurate, 
-contextual, and insightful answers based on the provided information.
+        # Create the prompt
+        prompt = f"""You are a domain-specific FAQ chatbot with knowledge graph integration.
+        
+{history_str}
 
 CONTEXT INFORMATION:
 {context_str}
 
-CHAT HISTORY:
-{history_str}
+USER QUESTION: {question}
 
-INSTRUCTIONS:
-1. Use the provided context to answer the question accurately
-2. If multiple pieces of information are relevant, synthesize them into a coherent response
-3. If you find relationships between concepts in the context, explain them
-4. Include relevant examples or definitions when they help clarify the answer
-5. If the context includes category hierarchies or synonyms, use them to provide more comprehensive answers
-6. When confidence scores or weights are provided, prioritize information accordingly
-7. If you're not completely certain about something, acknowledge the uncertainty
-8. If the context doesn't contain enough information to answer fully, say so
-9. If media files are provided, analyze and describe them in your response
+Please provide a comprehensive answer based on the context information provided. 
+If the context doesn't contain relevant information, provide a general response based on your knowledge.
 
-QUESTION: {question}
+Format your response with HTML for rich presentation:
+1. Use <h3> tags for section headings
+2. Use <ul> and <li> for lists
+3. Use <a href="URL">text</a> for links to relevant resources
+4. Use <code> tags for code or technical terms
+5. Use <b> and <i> for emphasis
+6. Use <div class="definition"> for term definitions
+7. Use <div class="example"> for examples
+8. For diagrams or visualizations, describe them with [IMAGE: description of what to visualize] and they will be rendered as images
+9. For interactive elements, use:
+   - <div class="interactive-element">
+       <div class="collapsible-header">Title <button class="toggle-button">Show</button></div>
+       <div class="collapsible-content">Content goes here...</div>
+     </div>
 
-ANSWER: """
+IMPORTANT: Return the HTML directly, NOT wrapped in markdown code blocks. Do not use ```html or ``` tags.
+
+Your response should be informative, accurate, and helpful.
+"""
         
         try:
             # Prepare contents for the API call
@@ -94,10 +103,71 @@ ANSWER: """
                 contents=contents
             )
             
-            return response.text
+            # Process the response to ensure it has proper HTML formatting
+            formatted_response = self._ensure_html_formatting(response.text)
+            
+            return formatted_response
         except Exception as e:
             print(f"Error generating response: {str(e)}")
             return f"I'm sorry, I encountered an error processing your request: {str(e)}"
+    
+    def _ensure_html_formatting(self, text: str) -> str:
+        """
+        Ensure the response has proper HTML formatting.
+        If the response doesn't contain HTML tags, add basic formatting.
+        """
+        # Remove markdown code block markers if present
+        if text.startswith("```html") and text.endswith("```"):
+            text = text[7:-3].strip()
+        elif text.startswith("```") and text.endswith("```"):
+            text = text[3:-3].strip()
+        
+        # Process image descriptions
+        image_pattern = r'\[IMAGE:\s*(.*?)\]'
+        
+        def replace_with_image(match):
+            description = match.group(1).strip()
+            # For demo purposes, use placeholder images based on the description
+            if "graph" in description.lower() or "network" in description.lower():
+                return f'<img src="https://via.placeholder.com/600x400/4285F4/FFFFFF?text=Knowledge+Graph+Visualization" alt="{description}" />'
+            elif "hierarchy" in description.lower() or "tree" in description.lower():
+                return f'<img src="https://via.placeholder.com/600x400/34A853/FFFFFF?text=Hierarchy+Diagram" alt="{description}" />'
+            elif "flow" in description.lower() or "process" in description.lower():
+                return f'<img src="https://via.placeholder.com/600x400/FBBC05/FFFFFF?text=Process+Flow" alt="{description}" />'
+            elif "comparison" in description.lower():
+                return f'<img src="https://via.placeholder.com/600x400/EA4335/FFFFFF?text=Comparison+Chart" alt="{description}" />'
+            else:
+                return f'<img src="https://via.placeholder.com/600x400/9C27B0/FFFFFF?text=Visualization" alt="{description}" />'
+        
+        text = re.sub(image_pattern, replace_with_image, text)
+        
+        # Check if the response already has HTML
+        if "<" in text and ">" in text:
+            # Already has some HTML, return as is
+            return text
+        
+        # Add basic HTML formatting
+        formatted_text = text
+        
+        # Format definitions (terms followed by colon and explanation)
+        definition_pattern = r'([A-Z][a-zA-Z\s]+):\s([^\.]+\.)'
+        formatted_text = re.sub(definition_pattern, r'<div class="definition"><b>\1:</b> \2</div>', formatted_text)
+        
+        # Format technical terms
+        tech_terms = ["MeTTa", "GraphRAG", "Knowledge Graph", "Gemini", "Neo4j", "Entity Extraction", 
+                      "Multimodal", "LLM", "RAG", "API"]
+        for term in tech_terms:
+            formatted_text = re.sub(r'\b' + re.escape(term) + r'\b', r'<code>\g<0></code>', formatted_text)
+        
+        # Add paragraph breaks
+        formatted_text = "<p>" + formatted_text.replace("\n\n", "</p><p>") + "</p>"
+        
+        # Add links for common references
+        formatted_text = formatted_text.replace("MeTTa documentation", '<a href="https://github.com/trueagi-io/metta" target="_blank">MeTTa documentation</a>')
+        formatted_text = formatted_text.replace("Gemini API", '<a href="https://ai.google.dev/gemini-api" target="_blank">Gemini API</a>')
+        formatted_text = formatted_text.replace("Neo4j", '<a href="https://neo4j.com/" target="_blank">Neo4j</a>')
+        
+        return formatted_text
     
     def _create_image_part(self, image_data: Union[bytes, BinaryIO], mime_type: str = None) -> Dict:
         """Create an image part for the Gemini API."""
