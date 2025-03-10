@@ -118,41 +118,46 @@ async def chat_multimodal(
         media_files = []
         extracted_entities = []
         
-        for file in files:
-            content_type = file.content_type
-            file_data = await file.read()
-            
-            if content_type.startswith('image/'):
-                # Add to media files for LLM processing
-                media_files.append({
-                    'type': 'image',
-                    'data': file_data,
-                    'mime_type': content_type
-                })
-                
-                # Extract entities from image in background
-                # We'll use the file data we already read
-                try:
-                    # Extract entities from the image
-                    image_entities = await extractor.extract_from_image(file_data, content_type)
-                    extracted_entities.extend(image_entities.get('entities', []))
+        # Check if files is not None and not empty before iterating
+        if files:
+            for file in files:
+                if file is None:
+                    continue
                     
-                    # Add extracted entities to the knowledge graph asynchronously
-                    # This won't block the response
-                    background_tasks = BackgroundTasks()
-                    background_tasks.add_task(add_extracted_data_to_graph, image_entities)
-                except Exception as extraction_error:
-                    print(f"Entity extraction error (non-blocking): {str(extraction_error)}")
-                    # Continue processing even if extraction fails
-            
-            elif content_type.startswith('video/'):
-                # For videos, we'd need to extract frames or thumbnails
-                # This is a simplified approach
-                media_files.append({
-                    'type': 'video',
-                    'data': file_data,
-                    'mime_type': content_type
-                })
+                content_type = file.content_type
+                file_data = await file.read()
+                
+                if content_type.startswith('image/'):
+                    # Add to media files for LLM processing
+                    media_files.append({
+                        'type': 'image',
+                        'data': file_data,
+                        'mime_type': content_type
+                    })
+                    
+                    # Extract entities from image in background
+                    # We'll use the file data we already read
+                    try:
+                        # Extract entities from the image
+                        image_entities = await extractor.extract_from_image(file_data, content_type)
+                        extracted_entities.extend(image_entities.get('entities', []))
+                        
+                        # Add extracted entities to the knowledge graph asynchronously
+                        # This won't block the response
+                        background_tasks = BackgroundTasks()
+                        background_tasks.add_task(add_extracted_data_to_graph, image_entities)
+                    except Exception as extraction_error:
+                        print(f"Entity extraction error (non-blocking): {str(extraction_error)}")
+                        # Continue processing even if extraction fails
+                
+                elif content_type.startswith('video/'):
+                    # For videos, we'd need to extract frames or thumbnails
+                    # This is a simplified approach
+                    media_files.append({
+                        'type': 'video',
+                        'data': file_data,
+                        'mime_type': content_type
+                    })
         
         # Enhance the query with extracted entities if any
         enhanced_query = text

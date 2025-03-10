@@ -18,36 +18,7 @@ Provides insightful, structured, and fact-enriched answers beyond standalone AI 
 Supports real-time updates as new knowledge is added to the graph.
 Enhances responses with definitions, examples, and contextual references from structured data.
 Key Features
-Conversational AI + Knowledge Graph: Combines NLP (LLM) with structured data. (DONT USE NLP , STRICTLY USE AN LLM ->Google Gen AI SDK
-
-The new Google Gen AI SDK provides a unified interface to Gemini 2.0 through both the Gemini Developer API and Vertex AI (the Gemini Enterprise API). With a few exceptions, code that runs on one platform will run on both. The Gen AI SDK also supports the Gemini 1.5 models.
-
-Python
-The Google Gen AI SDK for Python is available on PyPI and GitHub.
-
-To learn more, see the Python SDK reference.
-
-Quickstart
-1. Install the SDK
-
-
-pip install google-genai
-2. Import the library
-
-
-from google import genai
-3. Create a client
-
-
-client = genai.Client(api_key='GEMINI_API_KEY')
-4. Generate content
-
-
-response = client.models.generate_content(
-    model='gemini-2.0-flash', contents='How does RLHF work?'
-)
-print(response.text)
-)
+Conversational AI + Knowledge Graph: Combines NLP (LLM) with structured data. (DONT USE NLP , STRICTLY USE AN LLM -> 
 Context-Aware Answers: Leverages relationships and hierarchies for deeper insights.
 Real-Time Data Access: Fetches the latest domain-specific facts dynamically.
 Adaptive Learning: Updates the knowledge graph with new insights over time.

@@ -30,12 +30,49 @@ A powerful FAQ chatbot that combines MeTTa knowledge graphs with Google's Gemini
 
 ## Usage
 
+### Interactive Demo (for presentations)
+
+1. Start the demo interface:
+   ```bash
+   python start_demo.py
+   ```
+   This will:
+   - Start the server
+   - Open the interactive demo interface in your browser
+   - Display the knowledge graph visualization
+   - Allow you to chat with the bot and upload images
+
+2. Use the demo interface to:
+   - Ask questions about your domain
+   - Upload images for multimodal analysis
+   - See extracted entities in real-time
+   - Visualize the knowledge graph as it grows
+   - View the context used to generate responses
+
+### API Server
+
 1. Start the server:
    ```bash
    python src/main.py
    ```
 
 2. The API will be available at `http://localhost:8000`
+
+### Testing Multimodal Features
+
+For testing the multimodal capabilities:
+
+1. Use the HTML interface:
+   - Open `test_multimodal_backend.html` in your browser
+   - Upload images and ask questions
+
+2. Or use the Python script:
+   ```bash
+   python test_multimodal.py path/to/image.jpg "What is in this image?"
+   
+   # Interactive mode with chat history
+   python test_multimodal.py path/to/image.jpg "What is in this image?" --interactive
+   ```
 
 ## API Endpoints
 
