@@ -64,57 +64,64 @@ QUESTION: {question}
 
 ANSWER: """
         
-        # Prepare contents for the API call
-        contents = []
-        
-        # Add text prompt
-        contents.append(prompt)
-        
-        # Add media files if provided
-        if media_files:
-            for media_file in media_files:
-                if media_file['type'] == 'image':
-                    # Add image to contents
-                    contents.append(self._create_image_part(media_file['data'], media_file['mime_type']))
-                elif media_file['type'] == 'video':
-                    # For videos, we can extract frames or use the thumbnail
-                    # This is a simplified approach - in production, you'd want to extract key frames
-                    if 'thumbnail' in media_file:
-                        contents.append(self._create_image_part(media_file['thumbnail'], 'image/jpeg'))
-        
-        # Generate response using the client
-        response = client.models.generate_content(
-            model=self.model_name,
-            contents=contents
-        )
-        return response.text
-    
-    def _create_image_part(self, image_data: Union[str, bytes, BinaryIO], mime_type: str = None) -> Dict:
-        """Create an image part for the Gemini API."""
-        if isinstance(image_data, str):
-            # If it's a file path
-            if Path(image_data).exists():
-                with open(image_data, "rb") as f:
-                    image_bytes = f.read()
-                if not mime_type:
-                    mime_type = mimetypes.guess_type(image_data)[0]
-            # If it's a base64 string
-            else:
-                image_bytes = base64.b64decode(image_data)
-                mime_type = mime_type or "image/jpeg"  # Default to JPEG if not specified
-        elif isinstance(image_data, bytes):
-            image_bytes = image_data
-            mime_type = mime_type or "image/jpeg"  # Default to JPEG if not specified
-        else:
-            # Assume it's a file-like object
-            image_bytes = image_data.read()
-            mime_type = mime_type or "image/jpeg"  # Default to JPEG if not specified
+        try:
+            # Prepare contents for the API call
+            contents = []
             
-        # Create image part using the Gemini API
-        return genai.types.Part.from_data(
-            data=image_bytes,
-            mime_type=mime_type
-        )
+            # Add text prompt as the first part
+            text_part = {"text": prompt}
+            
+            # Create the content structure
+            content = {
+                "role": "user",
+                "parts": [text_part]
+            }
+            
+            # Add media files if provided
+            if media_files and len(media_files) > 0:
+                for media_file in media_files:
+                    if media_file['type'] == 'image':
+                        # Add image part to the same content
+                        image_part = self._create_image_part(media_file['data'], media_file['mime_type'])
+                        content["parts"].append(image_part)
+            
+            # Add the content to contents
+            contents.append(content)
+            
+            # Generate response using the client
+            response = client.models.generate_content(
+                model=self.model_name,
+                contents=contents
+            )
+            
+            return response.text
+        except Exception as e:
+            print(f"Error generating response: {str(e)}")
+            return f"I'm sorry, I encountered an error processing your request: {str(e)}"
+    
+    def _create_image_part(self, image_data: Union[bytes, BinaryIO], mime_type: str = None) -> Dict:
+        """Create an image part for the Gemini API."""
+        try:
+            # If image_data is already bytes, use it directly
+            if isinstance(image_data, bytes):
+                image_bytes = image_data
+            else:
+                # If it's a file-like object, read it
+                image_bytes = image_data.read()
+            
+            # Default to JPEG if mime_type not specified
+            mime_type = mime_type or "image/jpeg"
+            
+            # Create image part using the Gemini API
+            return {
+                "inline_data": {
+                    "mime_type": mime_type,
+                    "data": base64.b64encode(image_bytes).decode('utf-8')
+                }
+            }
+        except Exception as e:
+            print(f"Error creating image part: {str(e)}")
+            raise
     
     def _format_context(self, context: List[Dict[str, Any]]) -> str:
         """Format knowledge graph context into a structured string."""

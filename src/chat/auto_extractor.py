@@ -94,9 +94,25 @@ class AutoExtractor:
             Dict with extracted entities and relationships
         """
         # Create image part
-        from src.chat.llm import GeminiLLM
-        llm = GeminiLLM()
-        image_part = llm._create_image_part(image_data, mime_type)
+        import base64
+        
+        # Create image part directly instead of importing GeminiLLM
+        if isinstance(image_data, bytes):
+            image_bytes = image_data
+        else:
+            # If it's a file-like object, read it
+            image_bytes = image_data.read()
+        
+        # Default to JPEG if mime_type not specified
+        mime_type = mime_type or "image/jpeg"
+        
+        # Create image part
+        image_part = {
+            "inline_data": {
+                "mime_type": mime_type,
+                "data": base64.b64encode(image_bytes).decode('utf-8')
+            }
+        }
         
         prompt = """
         Analyze this image and extract structured knowledge from it. Identify entities, their properties, 
@@ -132,7 +148,15 @@ class AutoExtractor:
         
         response = client.models.generate_content(
             model=self.model_name,
-            contents=[prompt, image_part]
+            contents=[
+                {
+                    "role": "user",
+                    "parts": [
+                        {"text": prompt},
+                        image_part
+                    ]
+                }
+            ]
         )
         
         # Extract JSON from response
